@@ -31,3 +31,6 @@ go.work.sum
 # .idea/
 # .vscode/
 certs/*.pem
+
+# compiled binaries
+/k8s-governance-controller

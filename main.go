@@ -6,9 +6,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kytechxyz/k8s-governance-controller/pkg/validator"
 )
 
 const (
@@ -53,11 +56,27 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Build the response. For now: allow everything.
-	//    The UID MUST echo the request UID back, or the API server rejects the response.
+	// 3. Run the resource-limits validator against the raw object.
 	response := &admissionv1.AdmissionResponse{
-		UID:     review.Request.UID,
-		Allowed: true,
+		UID: review.Request.UID,
+	}
+
+	violations, err := validator.ValidateResourceLimits(review.Request.Object.Raw)
+	if err != nil {
+		// Could not decode the object — fail the request with an error status.
+		response.Allowed = false
+		response.Result = &metav1.Status{
+			Message: fmt.Sprintf("validation error: %v", err),
+		}
+	} else if len(violations) > 0 {
+		// Object decoded fine but violates policy — deny with the reasons.
+		response.Allowed = false
+		response.Result = &metav1.Status{
+			Message: "governance policy violations: " + strings.Join(violations, "; "),
+		}
+	} else {
+		// No violations — admit the object.
+		response.Allowed = true
 	}
 
 	// 4. Wrap the response in an AdmissionReview envelope.
