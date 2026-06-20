@@ -61,21 +61,48 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 		UID: review.Request.UID,
 	}
 
-	violations, err := validator.ValidateResourceLimits(review.Request.Object.Raw)
-	if err != nil {
-		// Could not decode the object — fail the request with an error status.
+	// Route to the right validators based on the object kind.
+	var violations []string
+	var decodeErr error
+
+	switch review.Request.Kind.Kind {
+	case "Deployment":
+		// Deployments need both resource limits AND cost-center labels.
+		limitViolations, err := validator.ValidateResourceLimits(review.Request.Object.Raw)
+		if err != nil {
+			decodeErr = err
+			break
+		}
+		labelViolations, err := validator.ValidateRequiredLabels(review.Request.Object.Raw)
+		if err != nil {
+			decodeErr = err
+			break
+		}
+		violations = append(violations, limitViolations...)
+		violations = append(violations, labelViolations...)
+
+	case "Namespace":
+		// Namespaces only need cost-center labels — they have no containers.
+		labelViolations, err := validator.ValidateRequiredLabels(review.Request.Object.Raw)
+		if err != nil {
+			decodeErr = err
+			break
+		}
+		violations = append(violations, labelViolations...)
+	}
+
+	// Decide the verdict from what the validators found.
+	if decodeErr != nil {
 		response.Allowed = false
 		response.Result = &metav1.Status{
-			Message: fmt.Sprintf("validation error: %v", err),
+			Message: fmt.Sprintf("validation error: %v", decodeErr),
 		}
 	} else if len(violations) > 0 {
-		// Object decoded fine but violates policy — deny with the reasons.
 		response.Allowed = false
 		response.Result = &metav1.Status{
 			Message: "governance policy violations: " + strings.Join(violations, "; "),
 		}
 	} else {
-		// No violations — admit the object.
 		response.Allowed = true
 	}
 
