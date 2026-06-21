@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: governance-webhook
+  namespace: default
+  labels:
+    app: governance-webhook
+    cost-center: platform-eng
+    team: infra
+    environment: lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: governance-webhook
+  template:
+    metadata:
+      labels:
+        app: governance-webhook
+    spec:
+      containers:
+        - name: webhook
+          image: k8s-governance-controller:v0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8443
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: governance-webhook
+  namespace: default
+spec:
+  selector:
+    app: governance-webhook
+  ports:
+    - port: 443
+      targetPort: 8443
