@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-vm-eviction-strategy
+  annotations:
+    policies.kyverno.io/title: Require VM LiveMigrate Eviction Strategy
+    policies.kyverno.io/category: Tier 2 - KubeVirt Governance
+    policies.kyverno.io/description: >-
+      Requires all VirtualMachine objects to declare evictionStrategy: LiveMigrate.
+      Without this, KubeVirt will forcefully terminate VMs during node maintenance
+      rather than live-migrating them, causing unplanned downtime. This maps directly
+      to enterprise HA requirements from traditional VMware/RHV environments where
+      vMotion/live migration was mandatory for host maintenance windows.
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: require-eviction-strategy-livemigrate
+      match:
+        any:
+          - resources:
+              kinds:
+                - VirtualMachine
+      validate:
+        message: >-
+          VirtualMachine '{{request.object.metadata.name}}' must declare
+          evictionStrategy: LiveMigrate. Without this, the VM will be forcefully
+          terminated during node maintenance instead of live-migrated, causing
+          unplanned downtime. Add 'evictionStrategy: LiveMigrate' under
+          spec.template.spec in your VirtualMachine manifest.
+        pattern:
+          spec:
+            template:
+              spec:
+                evictionStrategy: LiveMigrate

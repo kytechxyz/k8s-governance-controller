@@ -1,0 +1,21 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: test-vm-bad
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    environment: production
+spec:
+  running: false
+  template:
+    spec:
+      domain:
+        cpu:
+          cores: 2
+        memory:
+          guest: 4Gi
+        devices:
+          disks: []
+      volumes: []
