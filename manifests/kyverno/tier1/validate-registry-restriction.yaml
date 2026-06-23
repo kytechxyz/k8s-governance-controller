@@ -1,0 +1,32 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registry
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registry
+    policies.kyverno.io/category: Tier 1 - Baseline Governance
+    policies.kyverno.io/description: >-
+      Rejects any Deployment whose containers reference images from outside
+      the approved internal registry. All production workloads must source
+      images from registry.kytechxyz.io to ensure images have been scanned,
+      validated, and promoted through the internal pipeline.
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: restrict-image-registry
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+      validate:
+        message: >-
+          All container images must be sourced from the approved internal
+          registry 'registry.kytechxyz.io'. Found a disallowed image: '{{request.object.spec.template.spec.containers[].image}}'.
+          Update your manifest to use registry.kytechxyz.io/<image>:<tag>.
+        pattern:
+          spec:
+            template:
+              spec:
+                containers:
+                  - image: "registry.kytechxyz.io/*"

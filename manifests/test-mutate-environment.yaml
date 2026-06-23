@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-mutate-env
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    # environment label deliberately omitted
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-mutate-env
+  template:
+    metadata:
+      labels:
+        app: test-mutate-env
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "128Mi"

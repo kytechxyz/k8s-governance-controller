@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-bad-registry
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    environment: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-bad-registry
+  template:
+    metadata:
+      labels:
+        app: test-bad-registry
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
