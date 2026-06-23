@@ -7,6 +7,16 @@ webhooks:
     admissionReviewVersions: ["v1"]
     sideEffects: None
     failurePolicy: Ignore
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kyverno
+            - kube-system
+            - cert-manager
+            - monitoring
+            - kubevirt
     clientConfig:
       service:
         name: governance-webhook
@@ -19,7 +29,3 @@ webhooks:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["deployments"]
-      - apiGroups: [""]
-        apiVersions: ["v1"]
-        operations: ["CREATE", "UPDATE"]
-        resources: ["namespaces"]
