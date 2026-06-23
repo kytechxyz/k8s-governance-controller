@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: inject-environment-label
+  annotations:
+    policies.kyverno.io/title: Inject Environment Label
+    policies.kyverno.io/category: Tier 1 - Baseline Governance
+    policies.kyverno.io/description: >-
+      Injects 'environment: lab' on any Deployment that does not already
+      declare an environment label. Runs as a mutating policy upstream of
+      the validating webhook, so objects arrive at the Go webhook already
+      compliant on this field.
+spec:
+  rules:
+    - name: inject-environment-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              +(environment): lab
