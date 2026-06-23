@@ -1,0 +1,55 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-vm-instancetype
+  annotations:
+    policies.kyverno.io/title: Require VirtualMachineClusterInstancetype
+    policies.kyverno.io/category: Tier 2 - KubeVirt Governance
+    policies.kyverno.io/description: >-
+      Requires all VirtualMachine objects to reference a pre-approved
+      VirtualMachineClusterInstancetype rather than declaring raw CPU and memory
+      values. This enforces standardized sizing tiers (small, medium, large-compute)
+      and prevents resource sprawl — the KubeVirt equivalent of vCenter resource
+      pools and VM templates in traditional VMware environments.
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: require-instancetype-reference
+      match:
+        any:
+          - resources:
+              kinds:
+                - VirtualMachine
+      validate:
+        message: >-
+          VirtualMachine '{{request.object.metadata.name}}' must reference a
+          VirtualMachineClusterInstancetype under spec.instancetype. Ad-hoc CPU
+          and memory sizing is not permitted — use a pre-approved instancetype
+          (e.g., small, medium, large-compute) to ensure predictable resource
+          allocation and prevent cluster density sprawl.
+        pattern:
+          spec:
+            instancetype:
+              kind: VirtualMachineClusterInstancetype
+
+    - name: deny-raw-cpu-memory
+      match:
+        any:
+          - resources:
+              kinds:
+                - VirtualMachine
+      validate:
+        message: >-
+          VirtualMachine '{{request.object.metadata.name}}' declares raw CPU or
+          memory sizing under spec.template.spec.domain. This is not permitted —
+          remove domain.cpu and domain.memory and use a VirtualMachineClusterInstancetype
+          reference instead.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.template.spec.domain.cpu || '' }}"
+                operator: NotEquals
+                value: ""
+              - key: "{{ request.object.spec.template.spec.domain.memory || '' }}"
+                operator: NotEquals
+                value: ""

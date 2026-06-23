@@ -1,0 +1,22 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: test-vm-no-instancetype
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    environment: lab
+spec:
+  runStrategy: Always
+  template:
+    spec:
+      evictionStrategy: LiveMigrate
+      domain:
+        cpu:
+          cores: 2
+        memory:
+          guest: 4Gi
+        devices:
+          disks: []
+      volumes: []

@@ -1,0 +1,21 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: test-vm-good-instancetype
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    environment: lab
+spec:
+  runStrategy: Always
+  instancetype:
+    kind: VirtualMachineClusterInstancetype
+    name: medium
+  template:
+    spec:
+      evictionStrategy: LiveMigrate
+      domain:
+        devices:
+          disks: []
+      volumes: []
