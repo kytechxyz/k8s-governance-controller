@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-vm-run-strategy
+  annotations:
+    policies.kyverno.io/title: Require VM Run Strategy
+    policies.kyverno.io/category: Tier 2 - KubeVirt Governance
+    policies.kyverno.io/description: >-
+      Requires all production VirtualMachine objects to declare runStrategy: Always.
+      Without this, a VM that crashes or is shut down will not automatically restart,
+      requiring manual intervention. In traditional VMware/RHV environments, VM restart
+      behavior was enforced through HA policies. This policy enforces the equivalent
+      guarantee at admission time for KubeVirt workloads labeled environment: production.
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: require-run-strategy-always
+      match:
+        any:
+          - resources:
+              kinds:
+                - VirtualMachine
+              selector:
+                matchLabels:
+                  environment: production
+      validate:
+        message: >-
+          VirtualMachine '{{request.object.metadata.name}}' is labeled environment:production
+          but does not declare runStrategy: Always. Without this, the VM will not
+          automatically restart after a crash or shutdown — requiring manual intervention.
+          Add 'runStrategy: Always' under spec in your VirtualMachine manifest.
+        pattern:
+          spec:
+            runStrategy: Always
