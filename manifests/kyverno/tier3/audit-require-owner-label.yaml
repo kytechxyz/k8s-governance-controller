@@ -1,0 +1,33 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: audit-require-owner-label
+  annotations:
+    policies.kyverno.io/title: Audit - Require Owner Label
+    policies.kyverno.io/category: Tier 3 - Policy Observability
+    policies.kyverno.io/description: >-
+      Audit-mode policy requiring an 'owner' label on all Deployments.
+      Runs in Audit mode to demonstrate the audit-then-enforce progression:
+      violations are surfaced in PolicyReports without blocking workloads,
+      allowing teams to measure blast radius before switching to Enforce.
+      This mirrors the SELinux permissive-then-enforcing rollout pattern.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-owner-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+      validate:
+        message: >-
+          Deployment '{{request.object.metadata.name}}' is missing the required
+          'owner' label. This policy is currently in Audit mode — violations are
+          recorded in PolicyReports but not blocked. Switch validationFailureAction
+          to Enforce when ready to harden.
+        pattern:
+          metadata:
+            labels:
+              owner: "?*"
