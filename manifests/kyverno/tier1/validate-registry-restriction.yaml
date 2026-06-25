@@ -19,6 +19,15 @@ spec:
           - resources:
               kinds:
                 - Deployment
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - monitoring
+                - kyverno
+                - kubevirt
+                - kube-system
+                - local-path-storage
       validate:
         message: >-
           All container images must be sourced from the approved internal

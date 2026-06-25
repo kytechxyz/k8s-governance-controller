@@ -37,9 +37,12 @@ kind: Service
 metadata:
   name: governance-webhook
   namespace: default
+  labels:
+    app: governance-webhook
 spec:
   selector:
     app: governance-webhook
   ports:
-    - port: 443
+    - name: https
+      port: 443
       targetPort: 8443
