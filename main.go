@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -25,6 +27,7 @@ func main() {
 
 	mux.HandleFunc("GET /healthz", handleHealth)
 	mux.HandleFunc("POST /validate", handleValidate)
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	log.Printf("starting webhook server on %s (TLS)", listenAddr)
 	if err := http.ListenAndServeTLS(listenAddr, tlsCertPath, tlsKeyPath, mux); err != nil {
@@ -38,6 +41,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleValidate(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	// 1. Read the request body.
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -64,10 +68,10 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 	// Route to the right validators based on the object kind.
 	var violations []string
 	var decodeErr error
+	resourceType := strings.ToLower(review.Request.Kind.Kind)
 
 	switch review.Request.Kind.Kind {
 	case "Deployment":
-		// Deployments need both resource limits AND cost-center labels.
 		limitViolations, err := validator.ValidateResourceLimits(review.Request.Object.Raw)
 		if err != nil {
 			decodeErr = err
@@ -82,7 +86,6 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 		violations = append(violations, labelViolations...)
 
 	case "Namespace":
-		// Namespaces only need cost-center labels — they have no containers.
 		labelViolations, err := validator.ValidateRequiredLabels(review.Request.Object.Raw)
 		if err != nil {
 			decodeErr = err
@@ -92,19 +95,30 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decide the verdict from what the validators found.
+	result := "allowed"
 	if decodeErr != nil {
+		result = "denied"
 		response.Allowed = false
 		response.Result = &metav1.Status{
 			Message: fmt.Sprintf("validation error: %v", decodeErr),
 		}
 	} else if len(violations) > 0 {
+		result = "denied"
 		response.Allowed = false
 		response.Result = &metav1.Status{
 			Message: "governance policy violations: " + strings.Join(violations, "; "),
 		}
+		// Increment violation counter per violation type.
+		for _, v := range violations {
+			violationType := classifyViolation(v)
+			validator.ViolationsBlocked.WithLabelValues(violationType, review.Request.Namespace).Inc()
+		}
 	} else {
 		response.Allowed = true
 	}
+
+	// Record admission duration with resource type and result labels.
+	validator.AdmissionDuration.WithLabelValues(resourceType, result).Observe(time.Since(start).Seconds())
 
 	// 4. Wrap the response in an AdmissionReview envelope.
 	out := admissionv1.AdmissionReview{
@@ -127,4 +141,17 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("processed admission request uid=%s kind=%s namespace=%s allowed=%t",
 		review.Request.UID, review.Request.Kind.Kind, review.Request.Namespace, response.Allowed)
+}
+
+// classifyViolation maps a violation message to a short label
+// suitable for use in Prometheus metric labels.
+func classifyViolation(msg string) string {
+	switch {
+	case strings.Contains(msg, "resource limits"):
+		return "missing_limits"
+	case strings.Contains(msg, "label"):
+		return "missing_labels"
+	default:
+		return "policy_violation"
+	}
 }
