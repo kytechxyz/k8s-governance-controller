@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: webhook
-          image: k8s-governance-controller:v0.1.0
+          image: k8s-governance-controller:v0.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8443
