@@ -17,6 +17,7 @@ webhooks:
             - cert-manager
             - monitoring
             - kubevirt
+            - kubecost
     clientConfig:
       service:
         name: governance-webhook

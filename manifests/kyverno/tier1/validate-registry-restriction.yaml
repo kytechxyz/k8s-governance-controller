@@ -28,6 +28,7 @@ spec:
                 - kubevirt
                 - kube-system
                 - local-path-storage
+                - kubecost
       validate:
         message: >-
           All container images must be sourced from the approved internal
