@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baseline-web
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    environment: lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: baseline-web
+  template:
+    metadata:
+      labels:
+        app: baseline-web
+    spec:
+      containers:
+        - name: web
+          image: registry.kytechxyz.io/nginx:latest
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baseline-api
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    environment: lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: baseline-api
+  template:
+    metadata:
+      labels:
+        app: baseline-api
+    spec:
+      containers:
+        - name: api
+          image: registry.kytechxyz.io/nginx:latest
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baseline-worker
+  namespace: default
+  labels:
+    cost-center: platform-eng
+    team: infra
+    environment: lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: baseline-worker
+  template:
+    metadata:
+      labels:
+        app: baseline-worker
+    spec:
+      containers:
+        - name: worker
+          image: registry.kytechxyz.io/nginx:latest
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "32Mi"
+            limits:
+              cpu: "50m"
+              memory: "64Mi"

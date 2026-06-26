@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baseline-web
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: baseline-web
+  template:
+    metadata:
+      labels:
+        app: baseline-web
+    spec:
+      containers:
+        - name: web
+          image: nginx:latest
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baseline-api
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: baseline-api
+  template:
+    metadata:
+      labels:
+        app: baseline-api
+    spec:
+      containers:
+        - name: api
+          image: nginx:latest
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baseline-worker
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: baseline-worker
+  template:
+    metadata:
+      labels:
+        app: baseline-worker
+    spec:
+      containers:
+        - name: worker
+          image: nginx:latest
