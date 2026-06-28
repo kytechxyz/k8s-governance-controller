@@ -6,7 +6,7 @@ A production-grade Kubernetes governance framework demonstrating admission-time 
 
 A controlled before/after experiment validated this: enforcing resource bounds at admission time improved measured cluster allocation efficiency from 3.8% to 5.3% — a 39% relative improvement. The efficiency metric was previously unmeasurable because unconstrained workloads have no declared ceiling to measure against.
 
-→ **[Read the full architecture writeup on Medium](#)** *(link after publication)*
+→ **[Read the full architecture writeup on Medium](#)** _(link after publication)_
 
 ---
 
@@ -48,6 +48,7 @@ kubectl apply
 ```
 
 **Enforcement posture is deliberately split-brain:**
+
 - Go webhook: `failurePolicy: Ignore` — governs workload ergonomics (resource limits, attribution labels). A temporary gap is recoverable. A cluster-wide outage from a hard-failing webhook is not.
 - Kyverno: `Enforce` — governs security posture (registry restriction) and VM infrastructure. These fail closed because a bypass is not recoverable.
 
@@ -97,11 +98,11 @@ k8s-governance-controller/
 
 A TLS-secured validating admission webhook written in Go. Runs on `:8443`, serves three endpoints:
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/validate` | POST | AdmissionReview handler |
-| `/metrics` | GET | Prometheus metrics |
-| `/healthz` | GET | Liveness probe |
+| Endpoint    | Method | Purpose                 |
+| ----------- | ------ | ----------------------- |
+| `/validate` | POST   | AdmissionReview handler |
+| `/metrics`  | GET    | Prometheus metrics      |
+| `/healthz`  | GET    | Liveness probe          |
 
 ### What it validates
 
@@ -112,14 +113,17 @@ A TLS-secured validating admission webhook written in Go. Runs on `:8443`, serve
 ### Design decisions
 
 **Violations vs. errors are distinct return types:**
+
 ```go
 func ValidateResourceLimits(raw []byte) (violations []string, err error)
 // err        → infrastructure failure (decode failed)
 // violations → business-logic findings (policy non-compliance)
 ```
+
 Conflating them produces a webhook that returns HTTP 500 for policy violations. Keeping them distinct means non-compliance is always surfaced as a clear rejection message, never a server error.
 
 **UID echo is required:**
+
 ```go
 response := &admissionv1.AdmissionResponse{
     UID:     review.Request.UID, // Must echo — omit and the API server drops the response
@@ -171,15 +175,18 @@ Requires `spec.runStrategy: Always` on VMs labeled `environment: production`. La
 
 **`validate-vm-instancetype.yaml`**
 Dual-rule policy:
+
 - Rule 1: requires `spec.instancetype.kind: VirtualMachineClusterInstancetype` (standardized sizing tier)
 - Rule 2: denies raw `domain.cpu` or `domain.memory` declarations
 
 Both rules are required because a VM could declare both an instancetype and raw sizing simultaneously. A policy checking only for instancetype presence would pass such a VM. The null-safe JMESPath pattern:
+
 ```yaml
 key: "{{ request.object.spec.template.spec.domain.cpu || '' }}"
 operator: NotEquals
 value: ""
 ```
+
 The `|| ''` fallback is required — `length(@)` on an absent field throws rather than returning zero.
 
 ### Tier 3 — Policy Observability
@@ -196,13 +203,16 @@ Audit mode with `background: true`. Demonstrates the audit→enforce progression
 Two instruments, both in `pkg/validator/metrics.go`:
 
 **`governance_admission_duration_seconds`** — HistogramVec
+
 ```
 Labels: resource_type (deployment), result (allowed|denied)
 Buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5]
 ```
+
 Bucket boundaries are deliberate: `0.2` aligns exactly with the latency SLO threshold. Histogram quantile interpolation is only exact at bucket boundaries.
 
 **`governance_violations_blocked_total`** — CounterVec
+
 ```
 Labels: violation_type (missing_limits|missing_labels), namespace
 ```
@@ -212,15 +222,19 @@ Labels: violation_type (missing_limits|missing_labels), namespace
 A common error in webhook SLO design is conflating availability and latency into a single objective. They have different budget mechanics.
 
 **Availability SLO:** 99.5% uptime over a rolling 30-day window.
+
 ```
 Error budget = 0.5% × 2,592,000s = 12,960s = 3.6 hours
 ```
+
 As webhook latency climbs toward the API server timeout, `failurePolicy: Ignore` begins admitting requests without governance — silently. The availability SLO detects this before it becomes systematic bypass.
 
 **Latency SLO:** 99.5% of admission requests complete in under 200ms.
+
 ```
 Error budget = 0.5% of requests (request-based — cannot be expressed in hours)
 ```
+
 The budget is request-volume-dependent. On a low-volume cluster, a single slow request spikes the percentage. That is the correct behavior of a request-counted budget.
 
 See [`SLO.md`](SLO.md) for the full formal definition.
@@ -228,6 +242,7 @@ See [`SLO.md`](SLO.md) for the full formal definition.
 ### Grafana Dashboard
 
 Three panels exported to `dashboards/governance-webhook.json`:
+
 - Admission latency p50/p95/p99 with 200ms SLO threshold line
 - Violations blocked per hour by violation type
 - Violation rate % of total requests
@@ -250,10 +265,10 @@ Two cluster states, same three Deployments, Kubecost measurement:
 
 ### Results
 
-| State | Cluster Efficiency | Surfaced Savings |
-|---|---|---|
-| Ungoverned | 3.8% | $162.45/mo |
-| Governed | 5.3% | $165.40/mo |
+| State      | Cluster Efficiency | Surfaced Savings |
+| ---------- | ------------------ | ---------------- |
+| Ungoverned | 3.8%               | $162.45/mo       |
+| Governed   | 5.3%               | $165.40/mo       |
 
 ### Honest interpretation
 
@@ -316,6 +331,7 @@ openssl req -x509 -newkey rsa:4096 -keyout certs/server.key.pem \
 ```
 
 Update the `caBundle` in `manifests/webhook-config.yaml`:
+
 ```bash
 cat certs/server.cert.pem | base64 | tr -d '\n'
 ```
@@ -368,9 +384,19 @@ This is a portfolio-grade demonstration, not a production deployment. Production
 
 ---
 
+## Related Work
+
+This project is part of [The Single Thread](https://github.com/kytechxyz) — a quarter-long portfolio project building cloud-native platform engineering artifacts.
+
+**Phase 1 — ESO + Vault:** [github.com/kytechxyz/eso-vault-lab](https://github.com/kytechxyz/eso-vault-lab) — External Secrets Operator v2.6.0 with HashiCorp Vault Kubernetes authentication, documented failure modes, and a CI pipeline.
+
+**Phase 2 — Kubernetes Governance (this repo):** Go admission webhook, three-tier Kyverno policy framework, KubeVirt VM governance, Prometheus SLO instrumentation, and Kubecost FinOps integration.
+
 ## Author
 
-Kyle Williams — Principal Platform / Infrastructure Engineer
+Kyle Williams — Principal Platform / Infrastructure Engineer  
 29 years in enterprise infrastructure: HP-UX, Solaris, AIX → VMware, Red Hat Virtualization → Kubernetes, OpenShift Virtualization, KubeVirt.
 
-[GitHub](https://github.com/kytechxyz) · [LinkedIn](https://www.linkedin.com/in/) · [Medium](https://medium.com/@kyle-williams-systems)
+[GitHub](https://github.com/kytechxyz) · [LinkedIn](https://www.linkedin.com/in/kyle-williams-systems/) · [Medium](https://medium.com/@kyle-williams-systems)
+
+**Article:** [From ulimits to Admission Controllers: Why Resource Governance Is a 30-Year-Old Discipline](https://medium.com/@kyle-williams-systems) _(update link after publication)_
