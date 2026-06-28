@@ -34,3 +34,5 @@ certs/*.pem
 
 # compiled binaries
 /k8s-governance-controller
+.DS_Store
+main
