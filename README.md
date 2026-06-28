@@ -399,4 +399,4 @@ Kyle Williams — Principal Platform / Infrastructure Engineer
 
 [GitHub](https://github.com/kytechxyz) · [LinkedIn](https://www.linkedin.com/in/kyle-williams-systems/) · [Medium](https://medium.com/@kyle-williams-systems)
 
-**Article:** [From ulimits to Admission Controllers: Why Resource Governance Is a 30-Year-Old Discipline](https://medium.com/@kyle-williams-systems) _(update link after publication)_
+**Article:** [From ulimits to Admission Controllers: Why Resource Governance Is a 30-Year-Old Discipline](https://medium.com/@kyle-williams-systems/from-ulimits-to-admission-controllers-why-resource-governance-is-a-30-year-old-discipline-0200426b19a3)
