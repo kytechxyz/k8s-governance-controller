@@ -6,7 +6,7 @@ A production-grade Kubernetes governance framework demonstrating admission-time 
 
 A controlled before/after experiment validated this: enforcing resource bounds at admission time improved measured cluster allocation efficiency from 3.8% to 5.3% — a 39% relative improvement. The efficiency metric was previously unmeasurable because unconstrained workloads have no declared ceiling to measure against.
 
-→ **[Read the full architecture writeup on Medium](#)** _(link after publication)_
+→ **[Read the full architecture writeup on Medium](https://medium.com/@kyle-williams-systems/from-ulimits-to-admission-controllers-why-resource-governance-is-a-30-year-old-discipline-0200426b19a3)**
 
 ---
 
