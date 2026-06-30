@@ -103,12 +103,3 @@ reclaimed budget — and unlike a one-time cleanup, admission enforcement preven
 the waste from re-accumulating, because non-compliant workloads never enter the
 cluster in the first place.
 
-## Interview Headline
-
-> "I built an automated governance framework that enforces resource declarations
-> at admission time, and integrated Kubecost to quantify the impact. In a
-> controlled before/after test, enforcing resource limits improved measured
-> cluster efficiency by 39% relative — but the deeper finding was that
-> unconstrained workloads make cost measurement impossible in the first place.
-> Governance isn't a competing priority to FinOps; it's the precondition for it.
-> You can't right-size what was never sized."
