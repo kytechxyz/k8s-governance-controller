@@ -19,11 +19,11 @@ kubectl apply
       │
       ▼
 ┌─────────────────────────────────────────────────────┐
-│              Kubernetes API Server                   │
+│              Kubernetes API Server                  │
 └──────────┬──────────────────────┬───────────────────┘
            │                      │
            ▼                      ▼
-┌──────────────────┐   ┌─────────────────────────────┐
+┌──────────────────┐   ┌─────────────────────────────-┐
 │  Kyverno         │   │  Go Admission Webhook        │
 │  (Mutating)      │   │  (Validating)                │
 │                  │   │                              │
@@ -35,13 +35,13 @@ kubectl apply
 └──────────────────┘   └──────────────────────────────┘
            │
            ▼
-┌─────────────────────────────────────────────────────┐
+┌─────────────────────────────────────────────────────-┐
 │  Kyverno (Validating)          failurePolicy: Enforce│
 │                                                      │
 │  Tier 1: Registry restriction (all Deployments)      │
-│  Tier 2: KubeVirt VM policies (VirtualMachine CRD)  │
+│  Tier 2: KubeVirt VM policies (VirtualMachine CRD)   │
 │  Tier 3: Audit-mode PolicyReport observability       │
-└─────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────-┘
            │
            ▼
          etcd
