@@ -392,10 +392,12 @@ This project is part of [The Single Thread](https://github.com/kytechxyz) — a 
 
 **Phase 2 — Kubernetes Governance (this repo):** Go admission webhook, three-tier Kyverno policy framework, KubeVirt VM governance, Prometheus SLO instrumentation, and Kubecost FinOps integration.
 
+**Also see:** *Diagnosing a Multi-Layer Bare-Metal Provisioning Failure* (Medium — link pending publication) — a diagnostic case study applying the same layer-by-layer verification instinct behind this project's policy and admission-control design to a legacy bare-metal provisioning failure.
+
 ## Author
 
 Kyle Williams — Principal Platform / Infrastructure Engineer  
-29 years in enterprise infrastructure: HP-UX, Solaris, AIX → VMware, Red Hat Virtualization → Kubernetes, OpenShift Virtualization, KubeVirt.
+Decades in enterprise infrastructure: HP-UX, Solaris, AIX → VMware, Red Hat Virtualization → Kubernetes, OpenShift Virtualization, KubeVirt.
 
 [GitHub](https://github.com/kytechxyz) · [LinkedIn](https://www.linkedin.com/in/kyle-williams-systems/) · [Medium](https://medium.com/@kyle-williams-systems)
 
