@@ -19,11 +19,11 @@ kubectl apply
       │
       ▼
 ┌─────────────────────────────────────────────────────┐
-│              Kubernetes API Server                  │
+│              Kubernetes API Server                   │
 └──────────┬──────────────────────┬───────────────────┘
            │                      │
            ▼                      ▼
-┌──────────────────┐   ┌─────────────────────────────-┐
+┌──────────────────┐   ┌─────────────────────────────┐
 │  Kyverno         │   │  Go Admission Webhook        │
 │  (Mutating)      │   │  (Validating)                │
 │                  │   │                              │
@@ -35,20 +35,19 @@ kubectl apply
 └──────────────────┘   └──────────────────────────────┘
            │
            ▼
-┌─────────────────────────────────────────────────────-┐
+┌─────────────────────────────────────────────────────┐
 │  Kyverno (Validating)          failurePolicy: Enforce│
 │                                                      │
 │  Tier 1: Registry restriction (all Deployments)      │
-│  Tier 2: KubeVirt VM policies (VirtualMachine CRD)   │
+│  Tier 2: KubeVirt VM policies (VirtualMachine CRD)  │
 │  Tier 3: Audit-mode PolicyReport observability       │
-└─────────────────────────────────────────────────────-┘
+└─────────────────────────────────────────────────────┘
            │
            ▼
          etcd
 ```
 
 **Enforcement posture is deliberately split-brain:**
-
 - Go webhook: `failurePolicy: Ignore` — governs workload ergonomics (resource limits, attribution labels). A temporary gap is recoverable. A cluster-wide outage from a hard-failing webhook is not.
 - Kyverno: `Enforce` — governs security posture (registry restriction) and VM infrastructure. These fail closed because a bypass is not recoverable.
 
@@ -98,11 +97,11 @@ k8s-governance-controller/
 
 A TLS-secured validating admission webhook written in Go. Runs on `:8443`, serves three endpoints:
 
-| Endpoint    | Method | Purpose                 |
-| ----------- | ------ | ----------------------- |
-| `/validate` | POST   | AdmissionReview handler |
-| `/metrics`  | GET    | Prometheus metrics      |
-| `/healthz`  | GET    | Liveness probe          |
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/validate` | POST | AdmissionReview handler |
+| `/metrics` | GET | Prometheus metrics |
+| `/healthz` | GET | Liveness probe |
 
 ### What it validates
 
@@ -113,17 +112,14 @@ A TLS-secured validating admission webhook written in Go. Runs on `:8443`, serve
 ### Design decisions
 
 **Violations vs. errors are distinct return types:**
-
 ```go
 func ValidateResourceLimits(raw []byte) (violations []string, err error)
 // err        → infrastructure failure (decode failed)
 // violations → business-logic findings (policy non-compliance)
 ```
-
 Conflating them produces a webhook that returns HTTP 500 for policy violations. Keeping them distinct means non-compliance is always surfaced as a clear rejection message, never a server error.
 
 **UID echo is required:**
-
 ```go
 response := &admissionv1.AdmissionResponse{
     UID:     review.Request.UID, // Must echo — omit and the API server drops the response
@@ -175,18 +171,15 @@ Requires `spec.runStrategy: Always` on VMs labeled `environment: production`. La
 
 **`validate-vm-instancetype.yaml`**
 Dual-rule policy:
-
 - Rule 1: requires `spec.instancetype.kind: VirtualMachineClusterInstancetype` (standardized sizing tier)
 - Rule 2: denies raw `domain.cpu` or `domain.memory` declarations
 
 Both rules are required because a VM could declare both an instancetype and raw sizing simultaneously. A policy checking only for instancetype presence would pass such a VM. The null-safe JMESPath pattern:
-
 ```yaml
 key: "{{ request.object.spec.template.spec.domain.cpu || '' }}"
 operator: NotEquals
 value: ""
 ```
-
 The `|| ''` fallback is required — `length(@)` on an absent field throws rather than returning zero.
 
 ### Tier 3 — Policy Observability
@@ -203,16 +196,13 @@ Audit mode with `background: true`. Demonstrates the audit→enforce progression
 Two instruments, both in `pkg/validator/metrics.go`:
 
 **`governance_admission_duration_seconds`** — HistogramVec
-
 ```
 Labels: resource_type (deployment), result (allowed|denied)
 Buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5]
 ```
-
 Bucket boundaries are deliberate: `0.2` aligns exactly with the latency SLO threshold. Histogram quantile interpolation is only exact at bucket boundaries.
 
 **`governance_violations_blocked_total`** — CounterVec
-
 ```
 Labels: violation_type (missing_limits|missing_labels), namespace
 ```
@@ -222,19 +212,15 @@ Labels: violation_type (missing_limits|missing_labels), namespace
 A common error in webhook SLO design is conflating availability and latency into a single objective. They have different budget mechanics.
 
 **Availability SLO:** 99.5% uptime over a rolling 30-day window.
-
 ```
 Error budget = 0.5% × 2,592,000s = 12,960s = 3.6 hours
 ```
-
 As webhook latency climbs toward the API server timeout, `failurePolicy: Ignore` begins admitting requests without governance — silently. The availability SLO detects this before it becomes systematic bypass.
 
 **Latency SLO:** 99.5% of admission requests complete in under 200ms.
-
 ```
 Error budget = 0.5% of requests (request-based — cannot be expressed in hours)
 ```
-
 The budget is request-volume-dependent. On a low-volume cluster, a single slow request spikes the percentage. That is the correct behavior of a request-counted budget.
 
 See [`SLO.md`](SLO.md) for the full formal definition.
@@ -242,7 +228,6 @@ See [`SLO.md`](SLO.md) for the full formal definition.
 ### Grafana Dashboard
 
 Three panels exported to `dashboards/governance-webhook.json`:
-
 - Admission latency p50/p95/p99 with 200ms SLO threshold line
 - Violations blocked per hour by violation type
 - Violation rate % of total requests
@@ -265,10 +250,10 @@ Two cluster states, same three Deployments, Kubecost measurement:
 
 ### Results
 
-| State      | Cluster Efficiency | Surfaced Savings |
-| ---------- | ------------------ | ---------------- |
-| Ungoverned | 3.8%               | $162.45/mo       |
-| Governed   | 5.3%               | $165.40/mo       |
+| State | Cluster Efficiency | Surfaced Savings |
+|---|---|---|
+| Ungoverned | 3.8% | $162.45/mo |
+| Governed | 5.3% | $165.40/mo |
 
 ### Honest interpretation
 
@@ -306,69 +291,191 @@ Five real failure modes encountered during implementation, each teaching the sam
 - [Go 1.26+](https://golang.org/)
 - [Docker](https://www.docker.com/)
 
-### Cluster Setup
+**Working directory:** all commands below must be run from the repo root.
 
 ```bash
-# Create 2-node kind cluster
-kind create cluster --name go-dev-cluster --config - <<EOF
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-  - role: control-plane
-  - role: worker
-EOF
+git clone git@github.com:kytechxyz/k8s-governance-controller.git
+cd k8s-governance-controller
 ```
 
-### TLS Certificates
+> **zsh note:** do not paste multi-line commands in zsh — the PS2 continuation glyph injects literal characters into the command. Type multi-line commands directly or use the file-based approach shown below.
 
-The webhook requires a self-signed cert with correct SANs:
+---
+
+### Step 1 — Create the Cluster
+
+A `kind-config.yaml` is included in the repo root:
 
 ```bash
+kind create cluster --name go-dev-cluster --config kind-config.yaml
+kubectl get nodes  # both nodes should show Ready
+```
+
+---
+
+### Step 2 — TLS Certificates
+
+The webhook requires a self-signed cert with SANs matching the in-cluster Service DNS name.
+
+```bash
+# Create the certs directory — not tracked by git
+mkdir -p certs
+
+# Generate cert — type this command directly, do not paste
 openssl req -x509 -newkey rsa:4096 -keyout certs/server.key.pem \
   -out certs/server.cert.pem -days 365 -nodes \
   -subj "/CN=governance-webhook.default.svc" \
   -addext "subjectAltName=DNS:governance-webhook.default.svc,DNS:governance-webhook.default.svc.cluster.local"
 ```
 
-Update the `caBundle` in `manifests/webhook-config.yaml`:
+> **Rebuilding with existing certs:** if `certs/` already exists from a prior install, check the cert expiry before reusing:
+> ```bash
+> openssl x509 -enddate -noout -in certs/server.cert.pem
+> ```
+> If the cert is still valid, you can skip regeneration — but the `caBundle` in `manifests/webhook-config.yaml` must match the cert currently in `certs/`. See **Cert Rotation** below if they differ.
+
+Update `manifests/webhook-config.yaml` with the base64-encoded cert:
 
 ```bash
 cat certs/server.cert.pem | base64 | tr -d '\n'
+# Paste the output as the caBundle value in manifests/webhook-config.yaml
 ```
 
-### Deploy
+---
+
+### Step 3 — Verify Namespace Exemptions
+
+**Before installing any infrastructure tools**, confirm the exemption lists are in place. The Enforcement Paradox — a control plane that governs the cluster it runs in cannot bootstrap itself without a designed escape hatch — will block every infrastructure install if exemptions aren't defined first.
 
 ```bash
-# Build and load image
-docker build -t k8s-governance-controller:v0.2.0 .
-kind load docker-image k8s-governance-controller:v0.2.0 --name go-dev-cluster
+# Verify webhook exemptions
+grep -A 12 "namespaceSelector" manifests/webhook-config.yaml
 
-# Deploy webhook
+# Verify Kyverno registry exemptions
+grep -A 12 "exclude" manifests/kyverno/tier1/validate-registry-restriction.yaml
+```
+
+Both should include: `kyverno`, `kube-system`, `kubevirt`, `monitoring`, `kubecost`, `cert-manager`, `local-path-storage`.
+
+---
+
+### Step 4 — Build and Load Image
+
+```bash
+# Confirm no stale cached image from a prior build
+docker images | grep k8s-governance-controller
+
+# Build fresh (from repo root — Dockerfile must be present)
+docker build -t k8s-governance-controller:v0.2.0 .
+
+# Load into kind cluster
+kind load docker-image k8s-governance-controller:v0.2.0 --name go-dev-cluster
+```
+
+---
+
+### Step 5 — Deploy Webhook
+
+```bash
 kubectl apply -f manifests/webhook.yaml
 kubectl apply -f manifests/webhook-config.yaml
+kubectl rollout status deployment/governance-webhook
+```
 
-# Install Kyverno
-helm repo add kyverno https://kyverno.github.io/kyverno/
-helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace
+Verify the webhook is healthy and the cert is accepted:
 
-# Apply governance policies
+```bash
+kubectl logs -l app=governance-webhook --tail=5
+# Should show: "starting webhook server on :8443 (TLS)"
+# TLS handshake errors mean the caBundle doesn't match the serving cert — see Cert Rotation below
+```
+
+---
+
+### Step 6 — Install Kyverno
+
+```bash
+helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
+helm repo update
+helm upgrade --install kyverno kyverno/kyverno \
+  --version 3.8.1 \
+  -n kyverno --create-namespace
+kubectl get pods -n kyverno  # all 4 controllers should reach Running
+```
+
+> **Version pin:** `--version 3.8.1` pins to the version this project was built against. Kyverno v1.19+ deprecates `ClusterPolicy` in favor of `ValidatingPolicy`/`MutatingPolicy`. The existing policies work but will require migration in a future release.
+
+---
+
+### Step 7 — Install KubeVirt
+
+KubeVirt CRDs are required for Tier 2 policies. Two steps are required: the operator manifest registers one CRD and deploys the operator; the CR triggers the operator to dynamically register all VM-related CRDs.
+
+```bash
+# Step 7a — Install operator (registers kubevirts.kubevirt.io CRD, deploys virt-operator)
+kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/v1.8.4/kubevirt-operator.yaml
+
+# Wait for operator pods to be ready
+kubectl wait --for=condition=ready pod -l kubevirt.io=virt-operator -n kubevirt --timeout=120s
+
+# Step 7b — Apply CR (triggers operator to register all VM CRDs)
+kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/v1.8.4/kubevirt-cr.yaml
+
+# Wait for CRDs to register — expect 19
+kubectl get crds | grep kubevirt.io | wc -l
+```
+
+---
+
+### Step 8 — Apply Governance Policies
+
+```bash
 kubectl apply -f manifests/kyverno/tier1/
 kubectl apply -f manifests/kyverno/tier2/
 kubectl apply -f manifests/kyverno/tier3/
+
+# Verify all policies are Ready
+kubectl get clusterpolicy
 ```
 
-### Verify
+---
+
+### Step 9 — Verify
 
 ```bash
-# Should be rejected — missing labels and limits
+# Should be rejected by Kyverno registry restriction
 kubectl apply -f manifests/test-bad-deployment.yaml
 
-# Should be admitted — compliant
+# Should be admitted — compliant VM (ErrorUnschedulable status is expected in kind — no hardware virt)
 kubectl apply -f manifests/tests/kyverno/test-vm-compliant.yaml
+kubectl get vm
 
-# Check metrics
+# Check metrics — generate traffic that reaches the Go webhook first
+# (test-bad-deployment is caught by Kyverno before the Go webhook; use a registry-approved image)
 kubectl port-forward deployment/governance-webhook 8443:8443 &
-curl -k https://localhost:8443/metrics | grep governance_
+curl -k https://localhost:8443/metrics 2>/dev/null | grep governance_
+```
+
+---
+
+### Cert Rotation
+
+When certs are regenerated, the `caBundle` in `webhook-config.yaml` **must be updated** before redeploying. If it doesn't match the serving cert, the API server rejects the TLS handshake and `failurePolicy: Ignore` silently admits all requests without governance evaluation. The only signal is `tls: bad certificate` errors in the webhook logs.
+
+```bash
+# 1 — Regenerate certs (Steps 2 above)
+# 2 — Update caBundle
+NEW_CA=$(cat certs/server.cert.pem | base64 | tr -d '\n')
+# Paste NEW_CA into manifests/webhook-config.yaml as the caBundle value
+kubectl apply -f manifests/webhook-config.yaml
+
+# 3 — Verify dates match — both notBefore values must be identical
+kubectl get validatingwebhookconfiguration governance-webhook \
+  -o jsonpath='{.webhooks[0].clientConfig.caBundle}' | base64 -d | openssl x509 -noout -dates
+echo | openssl s_client -connect localhost:8443 2>/dev/null | openssl x509 -noout -dates
+
+# 4 — Confirm TLS errors are gone
+kubectl logs -l app=governance-webhook --tail=10
 ```
 
 ---
@@ -384,21 +491,9 @@ This is a portfolio-grade demonstration, not a production deployment. Production
 
 ---
 
-## Related Work
-
-This project is part of [The Single Thread](https://github.com/kytechxyz) — a quarter-long portfolio project building cloud-native platform engineering artifacts.
-
-**Phase 1 — ESO + Vault:** [github.com/kytechxyz/eso-vault-lab](https://github.com/kytechxyz/eso-vault-lab) — External Secrets Operator v2.6.0 with HashiCorp Vault Kubernetes authentication, documented failure modes, and a CI pipeline.
-
-**Phase 2 — Kubernetes Governance (this repo):** Go admission webhook, three-tier Kyverno policy framework, KubeVirt VM governance, Prometheus SLO instrumentation, and Kubecost FinOps integration.
-
-**Also see:** _[Four Failures Wearing One Disguise](https://medium.com/@kyle-williams-systems/four-failures-wearing-one-disguise-877a1877d0ac)_ (Medium) — a diagnostic case study applying the same layer-by-layer verification instinct behind this project's policy and admission-control design to a legacy bare-metal provisioning failure.
-
 ## Author
 
-Kyle Williams — Principal Platform / Infrastructure Engineer  
-Decades in enterprise infrastructure: HP-UX, Solaris, AIX → VMware, Red Hat Virtualization → Kubernetes, OpenShift Virtualization, KubeVirt.
+Kyle Williams — Principal Platform / Infrastructure Engineer
+29 years in enterprise infrastructure: HP-UX, Solaris, AIX → VMware, Red Hat Virtualization → Kubernetes, OpenShift Virtualization, KubeVirt.
 
 [GitHub](https://github.com/kytechxyz) · [LinkedIn](https://www.linkedin.com/in/kyle-williams-systems/) · [Medium](https://medium.com/@kyle-williams-systems)
-
-**Article:** [From ulimits to Admission Controllers: Why Resource Governance Is a 30-Year-Old Discipline](https://medium.com/@kyle-williams-systems/from-ulimits-to-admission-controllers-why-resource-governance-is-a-30-year-old-discipline-0200426b19a3)
