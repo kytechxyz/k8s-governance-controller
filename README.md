@@ -59,36 +59,56 @@ The SLO (see below) monitors the opening that `Ignore` creates — detecting deg
 
 ```
 k8s-governance-controller/
-├── cmd/                          # Main entry point
+├── cmd/                              # Main entry point (reserved)
 ├── pkg/
-│   └── validator/
-│       ├── limits.go             # Resource limits validator
-│       ├── labels.go             # Required labels validator
-│       └── metrics.go            # Prometheus instrumentation
+│   ├── validator/
+│   │   ├── limits.go                 # Resource limits validator
+│   │   ├── limits_test.go            # Table-driven tests (5 cases)
+│   │   ├── labels.go                 # Required labels validator
+│   │   ├── labels_test.go            # Table-driven tests (4 cases)
+│   │   └── metrics.go                # Prometheus instrumentation
+│   └── webhook/                      # Webhook handler (reserved)
 ├── manifests/
-│   ├── webhook.yaml              # Deployment + Service
-│   ├── webhook-config.yaml       # ValidatingWebhookConfiguration
-│   ├── servicemonitor.yaml       # Prometheus ServiceMonitor
-│   ├── baseline-constrained.yaml # FinOps experiment — governed state
-│   ├── baseline-unconstrained.yaml # FinOps experiment — baseline state
+│   ├── webhook.yaml                  # Deployment + Service
+│   ├── webhook-config.yaml           # ValidatingWebhookConfiguration
+│   ├── servicemonitor.yaml           # Prometheus ServiceMonitor
+│   ├── baseline-constrained.yaml     # FinOps experiment — governed state
+│   ├── baseline-unconstrained.yaml   # FinOps experiment — baseline state
+│   ├── test-bad-deployment.yaml      # Rejects: missing labels + limits
+│   ├── test-bad-registry.yaml        # Rejects: unapproved registry
+│   ├── test-mutate-environment.yaml  # Admits: proves label injection
 │   ├── kyverno/
-│   │   ├── tier1/                # Baseline governance policies
-│   │   ├── tier2/                # KubeVirt VM policies
-│   │   └── tier3/                # Audit-mode observability
+│   │   ├── tier1/
+│   │   │   ├── mutate-inject-environment.yaml    # Inject environment:lab
+│   │   │   └── validate-registry-restriction.yaml # Registry allowlist
+│   │   ├── tier2/
+│   │   │   ├── validate-vm-eviction-strategy.yaml # Require LiveMigrate
+│   │   │   ├── validate-vm-run-strategy.yaml      # Require Always (prod)
+│   │   │   └── validate-vm-instancetype.yaml      # Require instancetype
+│   │   └── tier3/
+│   │       └── audit-require-owner-label.yaml     # Audit-mode PolicyReport
 │   └── tests/
-│       └── kyverno/              # Test manifests for all policies
+│       └── kyverno/
+│           ├── test-vm-compliant.yaml
+│           ├── test-vm-compliant-instancetype.yaml
+│           ├── test-vm-no-eviction-strategy.yaml
+│           ├── test-vm-no-instancetype.yaml
+│           ├── test-vm-dev-no-runstrategy.yaml
+│           └── test-vm-production-no-runstrategy.yaml
 ├── dashboards/
-│   └── governance-webhook.json  # Grafana dashboard (3 panels)
+│   └── governance-webhook.json       # Grafana dashboard (3 panels)
 ├── evidence/
-│   ├── cost-impact.md            # FinOps experiment analysis
-│   ├── kubecost-before.png       # Efficiency 3.8% (ungoverned)
-│   ├── kubecost-after.png        # Efficiency 5.3% (governed)
-│   ├── kubecost-cost-allocation.csv
-│   └── article-outline.md        # Article architecture + peer review
-├── SLO.md                        # Formal SLI/SLO/Error Budget definition
-├── main.go                       # Webhook server (HTTPS, /validate, /metrics)
-├── Dockerfile                    # Multi-stage, distroless final image
-└── certs/                        # TLS certs (gitignored)
+│   ├── cost-impact.md                # FinOps experiment analysis
+│   ├── kubecost-before.png           # Efficiency 3.8% (ungoverned)
+│   ├── kubecost-after.png            # Efficiency 5.3% (governed)
+│   └── kubecost-cost-allocation.csv
+├── tests/
+│   └── kyverno/                      # Integration test manifests
+├── kind-config.yaml                  # 2-node kind cluster definition
+├── SLO.md                            # Formal SLI/SLO/Error Budget definition
+├── main.go                           # Webhook server (HTTPS, /validate, /metrics)
+├── Dockerfile                        # Multi-stage, distroless final image
+└── certs/                            # TLS certs (gitignored)
 ```
 
 ---
