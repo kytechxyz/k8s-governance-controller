@@ -10,10 +10,6 @@ A controlled before/after experiment validated this: enforcing resource bounds a
 
 ---
 
-## How This Was Built
-
-Built as a personal lab project with AI-assisted development. I set the design, the policies, the failure-mode experiments, and the tests, and reviewed every change; AI sped up the implementation.
-
 ## Architecture
 
 The framework is a single admission-time control plane with three cooperating layers:
@@ -170,6 +166,49 @@ go test ./pkg/validator/... -v
 # Build image (multi-stage, distroless)
 docker build -t k8s-governance-controller:v0.2.0 .
 ```
+
+---
+
+## Testing
+
+### Go Unit Tests
+
+```bash
+go test ./pkg/validator/... -v
+```
+
+Nine table-driven tests across two validators:
+
+- **`TestValidateResourceLimits`** (5 cases) — compliant Deployment, missing limits block, missing CPU only, missing memory only, multi-container with one broken container. The multi-container case is required to prove the loop collects all violations rather than returning on the first one found.
+- **`TestValidateRequiredLabels`** (4 cases) — all labels present, one label missing entirely, one label present but empty, two problems at once.
+
+Tests assert violation _count_, not message text, so wording changes don't break the suite.
+
+### Kyverno Policy Tests
+
+Test manifests live in `manifests/tests/kyverno/`. Apply them against a running cluster with policies loaded:
+
+```bash
+# Should be rejected — missing evictionStrategy
+kubectl apply -f manifests/tests/kyverno/test-vm-no-eviction-strategy.yaml
+
+# Should be admitted — compliant VM
+kubectl apply -f manifests/tests/kyverno/test-vm-compliant.yaml
+
+# Should be rejected — production VM missing runStrategy: Always
+kubectl apply -f manifests/tests/kyverno/test-vm-production-no-runstrategy.yaml
+
+# Should be admitted — dev VM, runStrategy policy doesn't apply
+kubectl apply -f manifests/tests/kyverno/test-vm-dev-no-runstrategy.yaml
+
+# Should be rejected — no instancetype, raw CPU/memory declared
+kubectl apply -f manifests/tests/kyverno/test-vm-no-instancetype.yaml
+
+# Should be admitted — instancetype reference present, no raw sizing
+kubectl apply -f manifests/tests/kyverno/test-vm-compliant-instancetype.yaml
+```
+
+The asymmetric cases (production rejected, dev admitted) prove that label-scoped policies fire precisely where the requirement exists and nowhere else.
 
 ---
 
