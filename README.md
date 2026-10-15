@@ -471,12 +471,12 @@ kubectl logs -l app=governance-webhook --tail=5
 helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
 helm repo update
 helm upgrade --install kyverno kyverno/kyverno \
-  --version 3.8.1 \
+  --version 3.9.0 \
   -n kyverno --create-namespace
 kubectl get pods -n kyverno  # all 4 controllers should reach Running
 ```
 
-> **Version pin:** `--version 3.8.1` is the chart this project was built against. Newer Kyverno releases introduce `ValidatingPolicy`/`MutatingPolicy` types alongside `ClusterPolicy`; these policies may need migration in a future release.
+> **Version pin:** `--version 3.9.0` is the chart this project was built against. Newer Kyverno releases introduce `ValidatingPolicy`/`MutatingPolicy` types alongside `ClusterPolicy`; these policies may need migration in a future release.
 
 ---
 
