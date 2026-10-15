@@ -10,6 +10,10 @@ A controlled before/after experiment validated this: enforcing resource bounds a
 
 ---
 
+## How This Was Built
+
+Built as a personal lab project with AI-assisted development. I set the design, the policies, the failure-mode experiments, and the tests, and reviewed every change; AI sped up the implementation.
+
 ## Architecture
 
 The framework is a single admission-time control plane with three cooperating layers:
