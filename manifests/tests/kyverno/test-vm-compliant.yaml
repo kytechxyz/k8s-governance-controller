@@ -9,14 +9,13 @@ metadata:
     environment: production
 spec:
   runStrategy: Always
+  instancetype:
+    kind: VirtualMachineClusterInstancetype
+    name: u1.medium
   template:
     spec:
       evictionStrategy: LiveMigrate
       domain:
-        cpu:
-          cores: 2
-        memory:
-          guest: 4Gi
         devices:
           disks: []
       volumes: []

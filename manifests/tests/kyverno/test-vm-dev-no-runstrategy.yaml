@@ -8,15 +8,14 @@ metadata:
     team: infra
     environment: dev
 spec:
-  runStrategy: Halted
+  running: false
+  instancetype:
+    kind: VirtualMachineClusterInstancetype
+    name: medium
   template:
     spec:
       evictionStrategy: LiveMigrate
       domain:
-        cpu:
-          cores: 2
-        memory:
-          guest: 4Gi
         devices:
           disks: []
       volumes: []

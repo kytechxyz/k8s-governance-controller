@@ -1,21 +1,20 @@
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
-  name: test-vm-bad
+  name: test-vm-no-eviction-strategy
   namespace: default
   labels:
     cost-center: platform-eng
     team: infra
     environment: production
 spec:
-  running: false
+  runStrategy: Always
+  instancetype:
+    kind: VirtualMachineClusterInstancetype
+    name: medium
   template:
     spec:
       domain:
-        cpu:
-          cores: 2
-        memory:
-          guest: 4Gi
         devices:
           disks: []
       volumes: []

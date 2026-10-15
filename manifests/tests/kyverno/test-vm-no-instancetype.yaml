@@ -13,10 +13,6 @@ spec:
     spec:
       evictionStrategy: LiveMigrate
       domain:
-        cpu:
-          cores: 2
-        memory:
-          guest: 4Gi
         devices:
           disks: []
       volumes: []
